@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="ВидеоКомпас AI получает транскрипт YouTube-видео через Apify и превращает его в понятный разбор с помощью Gemini."
+    />
+    <meta name="theme-color" content="#f5f8fc" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ВидеоКомпас AI" />
+    <meta
+      property="og:description"
+      content="Понятный AI-разбор YouTube-видео по транскрипту."
+    />
+    <title>ВидеоКомпас AI — разбор YouTube-видео</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#analyzer">Перейти к анализатору</a>
+
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="ВидеоКомпас AI — на главную">
+        <span class="brand-mark" aria-hidden="true">ВК</span>
+        <span>ВидеоКомпас <b>AI</b></span>
+      </a>
+      <span class="course-label">Учебный проект · Занятие 3</span>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Смотрите осознанно</p>
+          <h1 id="hero-title">Поймите суть YouTube‑видео до просмотра</h1>
+          <p class="hero-lead">
+            Вставьте ссылку — сервис получит доступные субтитры, выделит главное,
+            оценит пользу ролика и предложит практические действия.
+          </p>
+          <ul class="benefits" aria-label="Преимущества сервиса">
+            <li>Краткое резюме</li>
+            <li>Оценка пользы</li>
+            <li>Вопросы для самопроверки</li>
+          </ul>
+        </div>
+
+        <div class="hero-aside" aria-hidden="true">
+          <div class="compass-card">
+            <span class="compass-ring"><i></i></span>
+            <p>От ссылки</p>
+            <strong>к ясному выводу</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="analyzer-shell" id="analyzer" aria-labelledby="analyzer-title">
+        <div class="analyzer-heading">
+          <div>
+            <p class="section-number">01</p>
+            <h2 id="analyzer-title">Ссылка на видео</h2>
+          </div>
+          <p>Поддерживаются обычные ролики, Shorts и записи трансляций.</p>
+        </div>
+
+        <form class="analyzer-form" id="analyzerForm" novalidate>
+          <label for="youtubeUrl">YouTube‑ссылка</label>
+          <div class="input-row">
+            <input
+              id="youtubeUrl"
+              name="youtubeUrl"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              maxlength="500"
+              placeholder="https://www.youtube.com/watch?v=..."
+              aria-describedby="urlHelp"
+              required
+            />
+            <button class="primary-button" id="submitButton" type="submit">
+              <span>Проанализировать</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+          <p class="form-help" id="urlHelp">
+            Видео должно быть публичным и иметь ручные или автоматические субтитры.
+          </p>
+        </form>
+
+        <div class="error-message" id="errorMessage" role="alert" hidden>
+          <span aria-hidden="true">!</span>
+          <p id="errorText"></p>
+        </div>
+
+        <div class="progress-panel" id="progressPanel" aria-live="polite" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <div>
+            <p class="progress-title" id="progressTitle">Проверяем ссылку…</p>
+            <ol class="progress-steps" aria-label="Этапы анализа">
+              <li id="progressStep1">Проверка YouTube‑ссылки</li>
+              <li id="progressStep2">Получение транскрипта через Apify</li>
+              <li id="progressStep3">Анализ текста с помощью Gemini</li>
+            </ol>
+          </div>
+        </div>
+
+        <article class="result" id="result" aria-labelledby="result-title" hidden>
+          <header class="result-header">
+            <div>
+              <p class="section-number">02</p>
+              <h2 id="result-title">Результат анализа</h2>
+            </div>
+            <button class="secondary-button" id="copyButton" type="button">
+              Скопировать
+            </button>
+          </header>
+
+          <div class="video-summary">
+            <img id="videoThumbnail" alt="" width="480" height="360" />
+            <div>
+              <p class="video-label">Исходное видео</p>
+              <a id="videoLink" href="#" target="_blank" rel="noopener noreferrer">
+                Открыть на YouTube ↗
+              </a>
+              <p class="transcript-meta" id="transcriptMeta"></p>
+            </div>
+          </div>
+
+          <div class="analysis-text" id="analysisText"></div>
+
+          <button class="text-button" id="newAnalysisButton" type="button">
+            ← Проанализировать другое видео
+          </button>
+        </article>
+      </section>
+
+      <section class="how-it-works" aria-labelledby="how-title">
+        <div class="section-intro">
+          <p class="eyebrow">Прозрачный процесс</p>
+          <h2 id="how-title">Как это работает</h2>
+        </div>
+        <ol class="process-list">
+          <li>
+            <span>1</span>
+            <div>
+              <h3>Проверяем ссылку</h3>
+              <p>Принимаем только одну корректную ссылку на публичный YouTube‑ролик.</p>
+            </div>
+          </li>
+          <li>
+            <span>2</span>
+            <div>
+              <h3>Получаем текст</h3>
+              <p>Apify извлекает доступные субтитры, не передавая секретный ключ браузеру.</p>
+            </div>
+          </li>
+          <li>
+            <span>3</span>
+            <div>
+              <h3>Выделяем главное</h3>
+              <p>Gemini анализирует транскрипт по единому проверяемому шаблону.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>ВидеоКомпас AI · учебный некоммерческий проект</p>
+      <p>Результат AI может содержать неточности — сверяйте важные выводы с оригиналом.</p>
+    </footer>
+  </body>
+</html>
+
