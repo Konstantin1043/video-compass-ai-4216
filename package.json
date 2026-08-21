@@ -1,0 +1,16 @@
+{
+  "name": "video-compass-ai-4216",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ВидеоКомпас AI — учебный сервис анализа YouTube-видео через Apify и Gemini.",
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "test": "node --test",
+    "check": "npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
+
