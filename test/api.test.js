@@ -86,6 +86,39 @@ test("полный поток Apify → Gemini возвращает резуль
   assert.doesNotMatch(calls[0].url, /apify-secret/);
 });
 
+test("один раз повторяет Gemini-запрос при временной перегрузке", async () => {
+  let geminiCalls = 0;
+  const handler = handlerWith({
+    env: { APIFY_API_TOKEN: "token", GEMINI_API_KEY: "key" },
+    fetchImpl: async (url) => {
+      if (String(url).includes("api.apify.com")) {
+        return Response.json([{ transcript_only_text: "Тестовый транскрипт." }]);
+      }
+
+      geminiCalls += 1;
+      if (geminiCalls === 1) {
+        return Response.json(
+          { error: { code: 503, status: "UNAVAILABLE", message: "High demand" } },
+          { status: 503 },
+        );
+      }
+
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: "Анализ после повтора." }] } }],
+      });
+    },
+  });
+
+  const response = await handler(
+    request({ youtubeUrl: "https://youtu.be/dQw4w9WgXcQ" }),
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(geminiCalls, 2);
+  assert.match(payload.analysis, /после повтора/i);
+});
+
 test("возвращает понятную ошибку, если субтитры отсутствуют", async () => {
   const handler = handlerWith({
     env: { APIFY_API_TOKEN: "token", GEMINI_API_KEY: "key" },
