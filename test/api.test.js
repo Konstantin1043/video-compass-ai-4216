@@ -53,10 +53,11 @@ test("полный поток Apify → Gemini возвращает резуль
     }
 
     return Response.json({
-      steps: [
+      candidates: [
         {
-          type: "model_output",
-          content: [{ type: "text", text: "1. О ЧЁМ ВИДЕО\nТестовый анализ." }],
+          content: {
+            parts: [{ text: "1. О ЧЁМ ВИДЕО\nТестовый анализ." }],
+          },
         },
       ],
     });
@@ -79,6 +80,9 @@ test("полный поток Apify → Gemini возвращает резуль
   assert.equal(calls.length, 2);
   assert.equal(calls[0].options.headers.Authorization, "Bearer apify-secret");
   assert.equal(calls[1].options.headers["x-goog-api-key"], "gemini-secret");
+  assert.match(calls[1].url, /models\/gemini-3\.7-flash:generateContent$/);
+  const geminiBody = JSON.parse(calls[1].options.body);
+  assert.match(geminiBody.contents[0].parts[0].text, /тестовый транскрипт/i);
   assert.doesNotMatch(calls[0].url, /apify-secret/);
 });
 
