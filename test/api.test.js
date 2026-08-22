@@ -119,6 +119,41 @@ test("один раз повторяет Gemini-запрос при времен
   assert.match(payload.analysis, /после повтора/i);
 });
 
+test("переключается на Flash-Lite, если основная модель достигла лимита", async () => {
+  const geminiUrls = [];
+  const handler = handlerWith({
+    env: { APIFY_API_TOKEN: "token", GEMINI_API_KEY: "key" },
+    fetchImpl: async (url) => {
+      if (String(url).includes("api.apify.com")) {
+        return Response.json([{ transcript_only_text: "Тестовый транскрипт." }]);
+      }
+
+      geminiUrls.push(String(url));
+      if (String(url).includes("gemini-3.7-flash")) {
+        return Response.json(
+          { error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "Quota exceeded" } },
+          { status: 429 },
+        );
+      }
+
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: "Анализ резервной моделью." }] } }],
+      });
+    },
+  });
+
+  const response = await handler(
+    request({ youtubeUrl: "https://youtu.be/dQw4w9WgXcQ" }),
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.match(payload.analysis, /резервной моделью/i);
+  assert.equal(geminiUrls.length, 2);
+  assert.match(geminiUrls[0], /models\/gemini-3\.7-flash:generateContent$/);
+  assert.match(geminiUrls[1], /models\/gemini-3\.5-flash-lite:generateContent$/);
+});
+
 test("возвращает понятную ошибку, если субтитры отсутствуют", async () => {
   const handler = handlerWith({
     env: { APIFY_API_TOKEN: "token", GEMINI_API_KEY: "key" },
