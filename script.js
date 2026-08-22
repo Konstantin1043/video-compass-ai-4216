@@ -152,6 +152,10 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     if (error?.name === "AbortError") {
       showError("Анализ занял слишком много времени. Попробуйте ещё раз.");
+    } else if (
+      /load failed|failed to fetch|networkerror|network request failed/i.test(error?.message || "")
+    ) {
+      showError("Не удалось связаться с сервером. Проверьте интернет и повторите попытку.");
     } else {
       showError(error?.message || "Произошла непредвиденная ошибка.");
     }
