@@ -1,7 +1,14 @@
+import {
+  detectPreferredLanguage,
+  UI_TRANSLATIONS,
+  uiText,
+} from "./lib/ui-translations.js";
+
 const form = document.querySelector("#analyzerForm");
 const urlInput = document.querySelector("#youtubeUrl");
 const submitButton = document.querySelector("#submitButton");
 const submitButtonLabel = submitButton.querySelector("span");
+const languageButtons = [...document.querySelectorAll("[data-language]")];
 const errorMessage = document.querySelector("#errorMessage");
 const errorText = document.querySelector("#errorText");
 const progressPanel = document.querySelector("#progressPanel");
@@ -19,20 +26,130 @@ const analysisText = document.querySelector("#analysisText");
 const copyButton = document.querySelector("#copyButton");
 const newAnalysisButton = document.querySelector("#newAnalysisButton");
 
-let cooldownTimer = null;
+function storedLanguage() {
+  try {
+    return localStorage.getItem("videoCompassLanguage");
+  } catch {
+    return null;
+  }
+}
 
-function looksLikeYouTubeUrl(value) {
+let currentLanguage = detectPreferredLanguage({
+  storedLanguage: storedLanguage(),
+  browserLanguages: navigator.languages || [navigator.language],
+});
+let cooldownTimer = null;
+let cooldownRemaining = 0;
+let isAnalyzing = false;
+let activeProgressIndex = 0;
+let activeVideoId = null;
+let lastAnalyzedUrl = "";
+let currentPayload = null;
+const resultCache = new Map();
+
+function saveLanguage(language) {
+  try {
+    localStorage.setItem("videoCompassLanguage", language);
+  } catch {
+    // The selected language still works when storage is unavailable.
+  }
+}
+
+function text(key, params = {}) {
+  return uiText(currentLanguage, key, params);
+}
+
+function setLanguageControlsDisabled(disabled) {
+  languageButtons.forEach((button) => {
+    button.disabled = disabled;
+  });
+}
+
+function renderSubmitState() {
+  if (isAnalyzing) {
+    submitButton.disabled = true;
+    submitButtonLabel.textContent = text("analyzing");
+    return;
+  }
+
+  if (cooldownRemaining > 0) {
+    submitButton.disabled = true;
+    submitButtonLabel.textContent = text("repeat", { seconds: cooldownRemaining });
+    return;
+  }
+
+  submitButton.disabled = false;
+  submitButtonLabel.textContent = text("analyzeButton");
+}
+
+function translatePage(language) {
+  currentLanguage = language;
+  saveLanguage(language);
+
+  const dictionary = UI_TRANSLATIONS[language];
+  document.documentElement.lang = language;
+  document.title = dictionary.metaTitle;
+  document.querySelector('meta[name="description"]').content = dictionary.metaDescription;
+  document.querySelector('meta[property="og:description"]').content = dictionary.ogDescription;
+
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    const key = element.dataset.i18n;
+    const value = dictionary[key];
+    if (typeof value === "string") {
+      element.textContent = value;
+    }
+  });
+
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+    const value = dictionary[element.dataset.i18nAriaLabel];
+    if (typeof value === "string") {
+      element.setAttribute("aria-label", value);
+    }
+  });
+
+  languageButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.language === language));
+  });
+
+  if (!progressPanel.hidden) {
+    updateProgress(activeProgressIndex);
+  }
+  renderSubmitState();
+}
+
+function parseYouTubeVideoId(value) {
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase();
-    return (
-      ["youtu.be", "youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"].includes(
+    if (
+      !["youtu.be", "youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"].includes(
         host,
-      ) && ["http:", "https:"].includes(url.protocol)
-    );
+      ) ||
+      !["http:", "https:"].includes(url.protocol)
+    ) {
+      return null;
+    }
+
+    let videoId = "";
+    if (host === "youtu.be") {
+      videoId = url.pathname.split("/").filter(Boolean)[0] || "";
+    } else if (url.pathname === "/watch") {
+      videoId = url.searchParams.get("v") || "";
+    } else {
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (["shorts", "live", "embed"].includes(parts[0])) {
+        videoId = parts[1] || "";
+      }
+    }
+
+    return /^[A-Za-z0-9_-]{11}$/.test(videoId) ? videoId : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function looksLikeYouTubeUrl(value) {
+  return Boolean(parseYouTubeVideoId(value));
 }
 
 function showError(message) {
@@ -48,11 +165,8 @@ function clearError() {
 }
 
 function updateProgress(activeIndex) {
-  const titles = [
-    "Проверяем ссылку…",
-    "Получаем доступные субтитры…",
-    "Gemini выделяет главное…",
-  ];
+  activeProgressIndex = activeIndex;
+  const titles = [text("progressOne"), text("progressTwo"), text("progressThree")];
   progressTitle.textContent = titles[Math.min(activeIndex, titles.length - 1)];
 
   progressSteps.forEach((step, index) => {
@@ -63,42 +177,130 @@ function updateProgress(activeIndex) {
 
 function startCooldown(seconds = 5) {
   clearInterval(cooldownTimer);
-  let remaining = seconds;
-  submitButton.disabled = true;
-  submitButtonLabel.textContent = `Повтор через ${remaining} сек.`;
+  cooldownRemaining = seconds;
+  renderSubmitState();
 
   cooldownTimer = setInterval(() => {
-    remaining -= 1;
-    if (remaining <= 0) {
+    cooldownRemaining -= 1;
+    if (cooldownRemaining <= 0) {
       clearInterval(cooldownTimer);
-      submitButton.disabled = false;
-      submitButtonLabel.textContent = "Проанализировать";
-      return;
+      cooldownTimer = null;
+      cooldownRemaining = 0;
     }
-    submitButtonLabel.textContent = `Повтор через ${remaining} сек.`;
+    renderSubmitState();
   }, 1_000);
 }
 
 function formatCharacters(value) {
-  return new Intl.NumberFormat("ru-RU").format(value);
+  return new Intl.NumberFormat(UI_TRANSLATIONS[currentLanguage].locale).format(value);
 }
 
 function renderResult(payload) {
+  currentPayload = payload;
   videoThumbnail.src = payload.video.thumbnailUrl;
-  videoThumbnail.alt = "Превью проанализированного YouTube-видео";
+  videoThumbnail.alt = text("videoAlt");
   videoLink.href = payload.video.canonicalUrl;
   analysisText.textContent = payload.analysis;
 
   const metaParts = [
-    `${formatCharacters(payload.transcript.originalCharacters)} знаков в транскрипте`,
+    text("characters", {
+      count: formatCharacters(payload.transcript.originalCharacters),
+    }),
   ];
   if (payload.transcript.shortened) {
-    metaParts.push("для анализа использованы начало, середина и конец");
+    metaParts.push(text("shortened"));
   }
   transcriptMeta.textContent = metaParts.join(" · ");
 
   result.hidden = false;
-  result.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearVideoState() {
+  activeVideoId = null;
+  lastAnalyzedUrl = "";
+  currentPayload = null;
+  resultCache.clear();
+  result.hidden = true;
+}
+
+async function analyzeVideo(youtubeUrl, language, { scrollToResult = true } = {}) {
+  clearError();
+  currentPayload = null;
+  result.hidden = true;
+  progressPanel.hidden = false;
+  form.setAttribute("aria-busy", "true");
+  isAnalyzing = true;
+  setLanguageControlsDisabled(true);
+  renderSubmitState();
+  updateProgress(0);
+
+  const stageTwoTimer = setTimeout(() => updateProgress(1), 700);
+  const stageThreeTimer = setTimeout(() => updateProgress(2), 4_500);
+  const controller = new AbortController();
+  const requestTimeout = setTimeout(() => controller.abort(), 125_000);
+  let succeeded = false;
+
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept-Language": language,
+      },
+      body: JSON.stringify({ youtubeUrl, language }),
+      signal: controller.signal,
+    });
+
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(text("invalidResponse"));
+    }
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload?.error?.message || text("analysisFailed"));
+    }
+
+    if (activeVideoId && activeVideoId !== payload.video.videoId) {
+      resultCache.clear();
+    }
+    activeVideoId = payload.video.videoId;
+    lastAnalyzedUrl = payload.video.canonicalUrl;
+    resultCache.set(language, payload);
+
+    progressSteps.forEach((step) => {
+      step.classList.remove("is-active");
+      step.classList.add("is-done");
+    });
+    progressTitle.textContent = text("analysisReady");
+    renderResult(payload);
+    if (scrollToResult) {
+      result.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    succeeded = true;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      showError(text("timeout"));
+    } else if (
+      /load failed|failed to fetch|networkerror|network request failed/i.test(error?.message || "")
+    ) {
+      showError(text("network"));
+    } else {
+      showError(error?.message || text("unexpected"));
+    }
+  } finally {
+    clearTimeout(stageTwoTimer);
+    clearTimeout(stageThreeTimer);
+    clearTimeout(requestTimeout);
+    progressPanel.hidden = true;
+    form.removeAttribute("aria-busy");
+    isAnalyzing = false;
+    setLanguageControlsDisabled(false);
+    startCooldown();
+  }
+
+  return succeeded;
 }
 
 form.addEventListener("submit", async (event) => {
@@ -107,66 +309,49 @@ form.addEventListener("submit", async (event) => {
 
   const youtubeUrl = urlInput.value.trim();
   if (!looksLikeYouTubeUrl(youtubeUrl)) {
-    showError("Вставьте полную ссылку на YouTube, например https://youtu.be/…");
+    showError(text("invalidUrl"));
     urlInput.focus();
     return;
   }
 
-  result.hidden = true;
-  progressPanel.hidden = false;
-  form.setAttribute("aria-busy", "true");
-  submitButton.disabled = true;
-  submitButtonLabel.textContent = "Анализируем…";
-  updateProgress(0);
-
-  const stageTwoTimer = setTimeout(() => updateProgress(1), 700);
-  const stageThreeTimer = setTimeout(() => updateProgress(2), 4_500);
-  const controller = new AbortController();
-  const requestTimeout = setTimeout(() => controller.abort(), 125_000);
-
-  try {
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ youtubeUrl }),
-      signal: controller.signal,
-    });
-
-    let payload;
-    try {
-      payload = await response.json();
-    } catch {
-      throw new Error("Сервер вернул некорректный ответ. Попробуйте позже.");
-    }
-
-    if (!response.ok || !payload.ok) {
-      throw new Error(payload?.error?.message || "Не удалось выполнить анализ.");
-    }
-
-    progressSteps.forEach((step) => {
-      step.classList.remove("is-active");
-      step.classList.add("is-done");
-    });
-    progressTitle.textContent = "Анализ готов";
-    renderResult(payload);
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      showError("Анализ занял слишком много времени. Попробуйте ещё раз.");
-    } else if (
-      /load failed|failed to fetch|networkerror|network request failed/i.test(error?.message || "")
-    ) {
-      showError("Не удалось связаться с сервером. Проверьте интернет и повторите попытку.");
-    } else {
-      showError(error?.message || "Произошла непредвиденная ошибка.");
-    }
-  } finally {
-    clearTimeout(stageTwoTimer);
-    clearTimeout(stageThreeTimer);
-    clearTimeout(requestTimeout);
-    progressPanel.hidden = true;
-    form.removeAttribute("aria-busy");
-    startCooldown();
+  const requestedVideoId = parseYouTubeVideoId(youtubeUrl);
+  if (activeVideoId && requestedVideoId !== activeVideoId) {
+    clearVideoState();
   }
+
+  const cached = requestedVideoId === activeVideoId ? resultCache.get(currentLanguage) : null;
+  if (cached) {
+    renderResult(cached);
+    result.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  await analyzeVideo(youtubeUrl, currentLanguage);
+});
+
+languageButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    const language = button.dataset.language;
+    if (language === currentLanguage || isAnalyzing) {
+      return;
+    }
+
+    clearError();
+    translatePage(language);
+
+    if (!activeVideoId || !lastAnalyzedUrl) {
+      return;
+    }
+
+    const cached = resultCache.get(language);
+    if (cached) {
+      renderResult(cached);
+      return;
+    }
+
+    urlInput.value = lastAnalyzedUrl;
+    await analyzeVideo(lastAnalyzedUrl, language, { scrollToResult: false });
+  });
 });
 
 urlInput.addEventListener("input", clearError);
@@ -174,19 +359,21 @@ urlInput.addEventListener("input", clearError);
 copyButton.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(analysisText.textContent);
-    copyButton.textContent = "Скопировано";
+    copyButton.textContent = text("copied");
     setTimeout(() => {
-      copyButton.textContent = "Скопировать";
+      copyButton.textContent = text("copyButton");
     }, 1_800);
   } catch {
-    copyButton.textContent = "Не удалось скопировать";
+    copyButton.textContent = text("copyFailed");
   }
 });
 
 newAnalysisButton.addEventListener("click", () => {
-  result.hidden = true;
+  clearVideoState();
+  clearError();
   urlInput.value = "";
   urlInput.focus();
   document.querySelector("#analyzer").scrollIntoView({ behavior: "smooth" });
 });
 
+translatePage(currentLanguage);
