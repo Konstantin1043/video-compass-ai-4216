@@ -1,5 +1,10 @@
 import { fetchTranscript } from "../lib/apify.js";
 import { analyzeTranscript } from "../lib/gemini.js";
+import {
+  isSupportedLanguage,
+  languageFromAcceptLanguage,
+  serverMessage,
+} from "../lib/language.js";
 import { PublicError } from "../lib/service-error.js";
 import { prepareTranscript } from "../lib/transcript.js";
 import { parseYouTubeUrl } from "../lib/youtube.js";
@@ -14,6 +19,14 @@ function jsonResponse(payload, status = 200, extraHeaders = {}) {
       ...extraHeaders,
     },
   });
+}
+
+function errorResponse(language, code, status, params = {}, extraHeaders = {}) {
+  return jsonResponse(
+    { ok: false, error: { code, message: serverMessage(language, code, params) } },
+    status,
+    extraHeaders,
+  );
 }
 
 function getClientAddress(request) {
@@ -64,33 +77,33 @@ export function createAnalyzeHandler({
   rateLimiter = createRateLimiter(),
 } = {}) {
   return async function handleAnalyze(request) {
+    const headerLanguage = languageFromAcceptLanguage(
+      request.headers.get("accept-language"),
+      "ru",
+    );
+
     if (request.method !== "POST") {
-      return jsonResponse(
-        { ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Используйте POST-запрос." } },
+      return errorResponse(
+        headerLanguage,
+        "METHOD_NOT_ALLOWED",
         405,
+        {},
         { Allow: "POST" },
       );
     }
 
     const contentLength = Number(request.headers.get("content-length") || 0);
     if (contentLength > MAX_BODY_CHARACTERS) {
-      return jsonResponse(
-        { ok: false, error: { code: "BODY_TOO_LARGE", message: "Запрос слишком большой." } },
-        413,
-      );
+      return errorResponse(headerLanguage, "BODY_TOO_LARGE", 413);
     }
 
     const rateResult = rateLimiter.consume(getClientAddress(request));
     if (!rateResult.allowed) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: {
-            code: "TOO_MANY_REQUESTS",
-            message: `Слишком много запросов. Повторите через ${rateResult.retryAfterSeconds} сек.`,
-          },
-        },
+      return errorResponse(
+        headerLanguage,
+        "TOO_MANY_REQUESTS",
         429,
+        { seconds: rateResult.retryAfterSeconds },
         { "Retry-After": String(rateResult.retryAfterSeconds) },
       );
     }
@@ -99,54 +112,32 @@ export function createAnalyzeHandler({
     try {
       bodyText = await request.text();
     } catch {
-      return jsonResponse(
-        { ok: false, error: { code: "INVALID_BODY", message: "Не удалось прочитать запрос." } },
-        400,
-      );
+      return errorResponse(headerLanguage, "INVALID_BODY", 400);
     }
 
     if (bodyText.length > MAX_BODY_CHARACTERS) {
-      return jsonResponse(
-        { ok: false, error: { code: "BODY_TOO_LARGE", message: "Запрос слишком большой." } },
-        413,
-      );
+      return errorResponse(headerLanguage, "BODY_TOO_LARGE", 413);
     }
 
     let body;
     try {
       body = JSON.parse(bodyText || "{}");
     } catch {
-      return jsonResponse(
-        { ok: false, error: { code: "INVALID_JSON", message: "Некорректный формат запроса." } },
-        400,
-      );
+      return errorResponse(headerLanguage, "INVALID_JSON", 400);
     }
 
+    if (body?.language !== undefined && !isSupportedLanguage(body.language)) {
+      return errorResponse(headerLanguage, "UNSUPPORTED_LANGUAGE", 400);
+    }
+
+    const language = body?.language || "ru";
     const video = parseYouTubeUrl(body?.youtubeUrl);
     if (!video) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: {
-            code: "INVALID_YOUTUBE_URL",
-            message: "Вставьте ссылку на один ролик YouTube, Shorts или Live.",
-          },
-        },
-        400,
-      );
+      return errorResponse(language, "INVALID_YOUTUBE_URL", 400);
     }
 
     if (!env.APIFY_API_TOKEN || !env.GEMINI_API_KEY) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: {
-            code: "SERVICE_NOT_CONFIGURED",
-            message: "Сервис ещё не подключён к API. Сообщите владельцу сайта.",
-          },
-        },
-        503,
-      );
+      return errorResponse(language, "SERVICE_NOT_CONFIGURED", 503);
     }
 
     try {
@@ -160,10 +151,12 @@ export function createAnalyzeHandler({
         fetchImpl,
         env.GEMINI_API_KEY,
         preparedTranscript,
+        language,
       );
 
       return jsonResponse({
         ok: true,
+        language,
         video,
         analysis,
         transcript: {
@@ -174,22 +167,10 @@ export function createAnalyzeHandler({
       });
     } catch (error) {
       if (error instanceof PublicError) {
-        return jsonResponse(
-          { ok: false, error: { code: error.code, message: error.message } },
-          error.status,
-        );
+        return errorResponse(language, error.code, error.status);
       }
 
-      return jsonResponse(
-        {
-          ok: false,
-          error: {
-            code: "UNEXPECTED_ERROR",
-            message: "Произошла непредвиденная ошибка. Попробуйте позже.",
-          },
-        },
-        500,
-      );
+      return errorResponse(language, "UNEXPECTED_ERROR", 500);
     }
   };
 }
@@ -203,4 +184,3 @@ export default {
     return handler(request);
   },
 };
-
