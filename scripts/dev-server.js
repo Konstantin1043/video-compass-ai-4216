@@ -11,6 +11,8 @@ const staticFiles = new Map([
   ["/index.html", ["index.html", "text/html; charset=utf-8"]],
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
   ["/script.js", ["script.js", "text/javascript; charset=utf-8"]],
+  ["/lib/language.js", ["lib/language.js", "text/javascript; charset=utf-8"]],
+  ["/lib/ui-translations.js", ["lib/ui-translations.js", "text/javascript; charset=utf-8"]],
 ]);
 
 async function readBody(request) {
@@ -82,4 +84,3 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, "127.0.0.1", () => {
   process.stdout.write(`ВидеоКомпас AI: http://127.0.0.1:${port}\n`);
 });
-
