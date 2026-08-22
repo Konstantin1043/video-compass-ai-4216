@@ -9,47 +9,66 @@
     />
     <meta name="theme-color" content="#f5f8fc" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ВидеоКомпас AI" />
+    <meta property="og:title" content="VideoCompass AI" />
     <meta
       property="og:description"
       content="Понятный AI-разбор YouTube-видео по транскрипту."
     />
-    <title>ВидеоКомпас AI — разбор YouTube-видео</title>
+    <title>VideoCompass AI — разбор YouTube-видео</title>
     <link rel="stylesheet" href="/styles.css" />
-    <script src="/script.js" defer></script>
+    <script src="/script.js" type="module"></script>
   </head>
   <body>
-    <a class="skip-link" href="#analyzer">Перейти к анализатору</a>
+    <a class="skip-link" href="#analyzer" data-i18n="skipLink">Перейти к анализатору</a>
 
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="ВидеоКомпас AI — на главную">
-        <span class="brand-mark" aria-hidden="true">ВК</span>
-        <span>ВидеоКомпас <b>AI</b></span>
+      <a
+        class="brand"
+        href="#top"
+        aria-label="VideoCompass AI — на главную"
+        data-i18n-aria-label="brandHome"
+      >
+        <span class="brand-mark" aria-hidden="true">VC</span>
+        <span>VideoCompass <b>AI</b></span>
       </a>
-      <span class="course-label">Смысл видео — без лишнего</span>
+      <span class="course-label" data-i18n="tagline">Смысл видео — без лишнего</span>
+      <div
+        class="language-switcher"
+        role="group"
+        aria-label="Выбор языка"
+        data-i18n-aria-label="languageGroup"
+      >
+        <button type="button" data-language="ru" aria-label="Русский" title="Русский">RU</button>
+        <button type="button" data-language="en" aria-label="English" title="English">EN</button>
+        <button type="button" data-language="lv" aria-label="Latviešu" title="Latviešu">LV</button>
+      </div>
     </header>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">Смотрите осознанно</p>
-          <h1 id="hero-title">Поймите суть YouTube‑видео до просмотра</h1>
-          <p class="hero-lead">
+          <p class="eyebrow" data-i18n="heroEyebrow">Смотрите осознанно</p>
+          <h1 id="hero-title" data-i18n="heroTitle">Поймите суть YouTube‑видео до просмотра</h1>
+          <p class="hero-lead" data-i18n="heroLead">
             Вставьте ссылку — сервис получит доступные субтитры, выделит главное,
             оценит пользу ролика и предложит практические действия.
           </p>
-          <ul class="benefits" aria-label="Преимущества сервиса">
-            <li>Краткое резюме</li>
-            <li>Оценка пользы</li>
-            <li>Вопросы для самопроверки</li>
+          <ul
+            class="benefits"
+            aria-label="Преимущества сервиса"
+            data-i18n-aria-label="benefitsLabel"
+          >
+            <li data-i18n="benefitSummary">Краткое резюме</li>
+            <li data-i18n="benefitScore">Оценка пользы</li>
+            <li data-i18n="benefitQuestions">Вопросы для самопроверки</li>
           </ul>
         </div>
 
         <div class="hero-aside" aria-hidden="true">
           <div class="compass-card">
             <span class="compass-ring"><i></i></span>
-            <p>От ссылки</p>
-            <strong>к ясному выводу</strong>
+            <p data-i18n="heroFrom">От ссылки</p>
+            <strong data-i18n="heroTo">к ясному выводу</strong>
           </div>
         </div>
       </section>
@@ -58,13 +77,13 @@
         <div class="analyzer-heading">
           <div>
             <p class="section-number">01</p>
-            <h2 id="analyzer-title">Ссылка на видео</h2>
+            <h2 id="analyzer-title" data-i18n="analyzerTitle">Ссылка на видео</h2>
           </div>
-          <p>Поддерживаются обычные ролики, Shorts и записи трансляций.</p>
+          <p data-i18n="analyzerSupport">Поддерживаются обычные ролики, Shorts и записи трансляций.</p>
         </div>
 
         <form class="analyzer-form" id="analyzerForm" novalidate>
-          <label for="youtubeUrl">YouTube‑ссылка</label>
+          <label for="youtubeUrl" data-i18n="urlLabel">YouTube‑ссылка</label>
           <div class="input-row">
             <input
               id="youtubeUrl"
@@ -78,11 +97,11 @@
               required
             />
             <button class="primary-button" id="submitButton" type="submit">
-              <span>Проанализировать</span>
+              <span data-i18n="analyzeButton">Проанализировать</span>
               <span aria-hidden="true">→</span>
             </button>
           </div>
-          <p class="form-help" id="urlHelp">
+          <p class="form-help" id="urlHelp" data-i18n="urlHelp">
             Видео должно быть публичным и иметь ручные или автоматические субтитры.
           </p>
         </form>
@@ -95,11 +114,15 @@
         <div class="progress-panel" id="progressPanel" aria-live="polite" hidden>
           <div class="spinner" aria-hidden="true"></div>
           <div>
-            <p class="progress-title" id="progressTitle">Проверяем ссылку…</p>
-            <ol class="progress-steps" aria-label="Этапы анализа">
-              <li id="progressStep1">Проверка YouTube‑ссылки</li>
-              <li id="progressStep2">Получение транскрипта через Apify</li>
-              <li id="progressStep3">Анализ текста с помощью Gemini</li>
+            <p class="progress-title" id="progressTitle" data-i18n="progressOne">Проверяем ссылку…</p>
+            <ol
+              class="progress-steps"
+              aria-label="Этапы анализа"
+              data-i18n-aria-label="progressStepsLabel"
+            >
+              <li id="progressStep1" data-i18n="progressStepOne">Проверка YouTube‑ссылки</li>
+              <li id="progressStep2" data-i18n="progressStepTwo">Получение транскрипта через Apify</li>
+              <li id="progressStep3" data-i18n="progressStepThree">Анализ текста с помощью Gemini</li>
             </ol>
           </div>
         </div>
@@ -108,9 +131,9 @@
           <header class="result-header">
             <div>
               <p class="section-number">02</p>
-              <h2 id="result-title">Результат анализа</h2>
+              <h2 id="result-title" data-i18n="resultTitle">Результат анализа</h2>
             </div>
-            <button class="secondary-button" id="copyButton" type="button">
+            <button class="secondary-button" id="copyButton" type="button" data-i18n="copyButton">
               Скопировать
             </button>
           </header>
@@ -118,8 +141,14 @@
           <div class="video-summary">
             <img id="videoThumbnail" alt="" width="480" height="360" />
             <div>
-              <p class="video-label">Исходное видео</p>
-              <a id="videoLink" href="#" target="_blank" rel="noopener noreferrer">
+              <p class="video-label" data-i18n="sourceVideo">Исходное видео</p>
+              <a
+                id="videoLink"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-i18n="openYouTube"
+              >
                 Открыть на YouTube ↗
               </a>
               <p class="transcript-meta" id="transcriptMeta"></p>
@@ -128,7 +157,7 @@
 
           <div class="analysis-text" id="analysisText"></div>
 
-          <button class="text-button" id="newAnalysisButton" type="button">
+          <button class="text-button" id="newAnalysisButton" type="button" data-i18n="newAnalysis">
             ← Проанализировать другое видео
           </button>
         </article>
@@ -136,29 +165,29 @@
 
       <section class="how-it-works" aria-labelledby="how-title">
         <div class="section-intro">
-          <p class="eyebrow">Прозрачный процесс</p>
-          <h2 id="how-title">Как это работает</h2>
+          <p class="eyebrow" data-i18n="processEyebrow">Прозрачный процесс</p>
+          <h2 id="how-title" data-i18n="processTitle">Как это работает</h2>
         </div>
         <ol class="process-list">
           <li>
             <span>1</span>
             <div>
-              <h3>Проверяем ссылку</h3>
-              <p>Принимаем только одну корректную ссылку на публичный YouTube‑ролик.</p>
+              <h3 data-i18n="processOneTitle">Проверяем ссылку</h3>
+              <p data-i18n="processOneText">Принимаем только одну корректную ссылку на публичный YouTube‑ролик.</p>
             </div>
           </li>
           <li>
             <span>2</span>
             <div>
-              <h3>Получаем текст</h3>
-              <p>Apify извлекает доступные субтитры, не передавая секретный ключ браузеру.</p>
+              <h3 data-i18n="processTwoTitle">Получаем текст</h3>
+              <p data-i18n="processTwoText">Apify извлекает доступные субтитры, не передавая секретный ключ браузеру.</p>
             </div>
           </li>
           <li>
             <span>3</span>
             <div>
-              <h3>Выделяем главное</h3>
-              <p>Gemini анализирует транскрипт по единому проверяемому шаблону.</p>
+              <h3 data-i18n="processThreeTitle">Выделяем главное</h3>
+              <p data-i18n="processThreeText">Gemini анализирует транскрипт по единому проверяемому шаблону.</p>
             </div>
           </li>
         </ol>
@@ -166,9 +195,8 @@
     </main>
 
     <footer class="site-footer">
-      <p>ВидеоКомпас AI · учебный некоммерческий проект</p>
-      <p>Результат AI может содержать неточности — сверяйте важные выводы с оригиналом.</p>
+      <p data-i18n="footerProject">VideoCompass AI · учебный некоммерческий проект</p>
+      <p data-i18n="footerDisclaimer">Результат AI может содержать неточности — сверяйте важные выводы с оригиналом.</p>
     </footer>
   </body>
 </html>
-
