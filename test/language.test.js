@@ -28,6 +28,17 @@ test("выбирает сохранённый язык раньше языка �
   );
 });
 
+test("временно выбирает русский для проверки преподавателем", () => {
+  assert.equal(
+    detectPreferredLanguage({
+      forcedLanguage: "ru",
+      storedLanguage: "en",
+      browserLanguages: ["lv-LV"],
+    }),
+    "ru",
+  );
+});
+
 test("использует язык браузера и английский резервный вариант", () => {
   assert.equal(
     detectPreferredLanguage({ browserLanguages: ["de-DE", "ru-RU"] }),
@@ -56,3 +67,4 @@ test("форматирует динамические UI и серверные �
   assert.equal(uiText("en", "repeat", { seconds: 5 }), "Retry in 5 sec.");
   assert.match(serverMessage("lv", "TOO_MANY_REQUESTS", { seconds: 12 }), /12 sek/);
 });
+
