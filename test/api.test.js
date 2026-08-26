@@ -85,7 +85,8 @@ test("полный поток Apify → Gemini возвращает резуль
   assert.equal(calls.length, 2);
   assert.equal(calls[0].options.headers.Authorization, "Bearer apify-secret");
   assert.equal(calls[1].options.headers["x-goog-api-key"], "gemini-secret");
-  assert.match(calls[1].url, /models\/gemini-3\.7-flash:generateContent$/);
+  assert.match(calls[1].url, /models\/gemini-3\.5-flash-lite:generateContent$/);
+  assert.doesNotMatch(calls[1].url, /gemini-3\.7-flash/);
   const geminiBody = JSON.parse(calls[1].options.body);
   assert.match(geminiBody.contents[0].parts[0].text, /тестовый транскрипт/i);
   assert.doesNotMatch(calls[0].url, /apify-secret/);
@@ -200,7 +201,7 @@ test("один раз повторяет Gemini-запрос при времен
   assert.match(payload.analysis, /после повтора/i);
 });
 
-test("переключается на Flash-Lite, если основная модель достигла лимита", async () => {
+test("использует только Gemini Flash-Lite", async () => {
   const geminiUrls = [];
   const handler = handlerWith({
     env: { APIFY_API_TOKEN: "token", GEMINI_API_KEY: "key" },
@@ -210,15 +211,8 @@ test("переключается на Flash-Lite, если основная мо
       }
 
       geminiUrls.push(String(url));
-      if (String(url).includes("gemini-3.7-flash")) {
-        return Response.json(
-          { error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "Quota exceeded" } },
-          { status: 429 },
-        );
-      }
-
       return Response.json({
-        candidates: [{ content: { parts: [{ text: "Анализ резервной моделью." }] } }],
+        candidates: [{ content: { parts: [{ text: "Анализ моделью Flash-Lite." }] } }],
       });
     },
   });
@@ -229,10 +223,43 @@ test("переключается на Flash-Lite, если основная мо
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.match(payload.analysis, /резервной моделью/i);
-  assert.equal(geminiUrls.length, 2);
-  assert.match(geminiUrls[0], /models\/gemini-3\.7-flash:generateContent$/);
-  assert.match(geminiUrls[1], /models\/gemini-3\.5-flash-lite:generateContent$/);
+  assert.match(payload.analysis, /Flash-Lite/i);
+  assert.equal(geminiUrls.length, 1);
+  assert.match(geminiUrls[0], /models\/gemini-3\.5-flash-lite:generateContent$/);
+  assert.doesNotMatch(geminiUrls[0], /gemini-3\.7-flash/);
+});
+
+test("повторяет Flash-Lite после тайм-аута первой попытки", async () => {
+  let geminiCalls = 0;
+  const handler = handlerWith({
+    env: { APIFY_API_TOKEN: "token", GEMINI_API_KEY: "key" },
+    fetchImpl: async (url) => {
+      if (String(url).includes("api.apify.com")) {
+        return Response.json([{ transcript_only_text: "Тестовый транскрипт." }]);
+      }
+
+      geminiCalls += 1;
+      assert.match(String(url), /models\/gemini-3\.5-flash-lite:generateContent$/);
+      if (geminiCalls === 1) {
+        const timeoutError = new Error("Timed out");
+        timeoutError.name = "AbortError";
+        throw timeoutError;
+      }
+
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: "Анализ после тайм-аута." }] } }],
+      });
+    },
+  });
+
+  const response = await handler(
+    request({ youtubeUrl: "https://youtu.be/dQw4w9WgXcQ" }),
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(geminiCalls, 2);
+  assert.match(payload.analysis, /после тайм-аута/i);
 });
 
 test("возвращает понятную ошибку, если субтитры отсутствуют", async () => {
