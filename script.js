@@ -24,8 +24,14 @@ const videoThumbnail = document.querySelector("#videoThumbnail");
 const videoLink = document.querySelector("#videoLink");
 const transcriptMeta = document.querySelector("#transcriptMeta");
 const analysisText = document.querySelector("#analysisText");
+const analysisToolbar = document.querySelector("#analysisToolbar");
+const collapseAllButton = document.querySelector("#collapseAllButton");
+const expandAllButton = document.querySelector("#expandAllButton");
 const copyButton = document.querySelector("#copyButton");
 const newAnalysisButton = document.querySelector("#newAnalysisButton");
+
+// Временно: во время проверки преподавателем каждое новое открытие начинается на русском.
+const REVIEW_DEFAULT_LANGUAGE = "ru";
 
 function storedLanguage() {
   try {
@@ -36,6 +42,7 @@ function storedLanguage() {
 }
 
 let currentLanguage = detectPreferredLanguage({
+  forcedLanguage: REVIEW_DEFAULT_LANGUAGE,
   storedLanguage: storedLanguage(),
   browserLanguages: navigator.languages || [navigator.language],
 });
@@ -47,6 +54,7 @@ let activeVideoId = null;
 let lastAnalyzedUrl = "";
 let currentPayload = null;
 const resultCache = new Map();
+let analysisSectionObserver = null;
 
 function saveLanguage(language) {
   try {
@@ -228,10 +236,47 @@ function appendAnalysisBody(container, body) {
   }
 }
 
+function analysisSections() {
+  return [...analysisText.querySelectorAll("details.analysis-section")];
+}
+
+function updateAnalysisControls() {
+  const sections = analysisSections();
+  const openSections = sections.filter((section) => section.open).length;
+  collapseAllButton.disabled = openSections === 0;
+  expandAllButton.disabled = openSections === sections.length;
+}
+
+function revealAnalysisSections(sections) {
+  analysisSectionObserver?.disconnect();
+
+  if (!("IntersectionObserver" in window)) {
+    sections.forEach((section) => section.classList.add("is-visible"));
+    return;
+  }
+
+  analysisSectionObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+
+        entry.target.classList.add("is-visible");
+        analysisSectionObserver.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.08, rootMargin: "0px 0px -7% 0px" },
+  );
+
+  sections.forEach((section) => analysisSectionObserver.observe(section));
+}
+
 function renderAnalysis(analysis, language) {
   const sections = parseAnalysisSections(analysis, language);
   analysisText.replaceChildren();
   analysisText.classList.toggle("is-plain", sections.length === 0);
+  analysisToolbar.hidden = sections.length === 0;
 
   if (!sections.length) {
     analysisText.textContent = analysis;
@@ -242,7 +287,8 @@ function renderAnalysis(analysis, language) {
     const card = document.createElement("details");
     card.className = "analysis-section";
     card.open = true;
-    card.style.setProperty("--section-order", String(index));
+    card.style.setProperty("--section-delay", `${(index % 3) * 70}ms`);
+    card.addEventListener("toggle", updateAnalysisControls);
 
     const header = document.createElement("summary");
     header.className = "analysis-section-header";
@@ -269,6 +315,10 @@ function renderAnalysis(analysis, language) {
     card.append(header, body);
     analysisText.append(card);
   });
+
+  const cards = analysisSections();
+  updateAnalysisControls();
+  revealAnalysisSections(cards);
 }
 
 function renderResult(payload) {
@@ -430,6 +480,20 @@ languageButtons.forEach((button) => {
   });
 });
 
+collapseAllButton.addEventListener("click", () => {
+  analysisSections().forEach((section) => {
+    section.open = false;
+  });
+  updateAnalysisControls();
+});
+
+expandAllButton.addEventListener("click", () => {
+  analysisSections().forEach((section) => {
+    section.open = true;
+  });
+  updateAnalysisControls();
+});
+
 urlInput.addEventListener("input", clearError);
 
 copyButton.addEventListener("click", async () => {
@@ -453,3 +517,4 @@ newAnalysisButton.addEventListener("click", () => {
 });
 
 translatePage(currentLanguage);
+
