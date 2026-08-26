@@ -3,6 +3,7 @@ import {
   UI_TRANSLATIONS,
   uiText,
 } from "./lib/ui-translations.js";
+import { parseAnalysisSections } from "./lib/analysis-sections.js";
 
 const form = document.querySelector("#analyzerForm");
 const urlInput = document.querySelector("#youtubeUrl");
@@ -195,12 +196,87 @@ function formatCharacters(value) {
   return new Intl.NumberFormat(UI_TRANSLATIONS[currentLanguage].locale).format(value);
 }
 
+function appendAnalysisBody(container, body) {
+  let activeList = null;
+
+  for (const rawLine of body.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) {
+      activeList = null;
+      continue;
+    }
+
+    const bulletMatch = line.match(/^[-*•]\s+(.+)$/);
+    const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    if (bulletMatch || numberedMatch) {
+      const listTag = numberedMatch ? "ol" : "ul";
+      if (!activeList || activeList.tagName.toLowerCase() !== listTag) {
+        activeList = document.createElement(listTag);
+        container.append(activeList);
+      }
+
+      const item = document.createElement("li");
+      item.textContent = (bulletMatch || numberedMatch)[1];
+      activeList.append(item);
+      continue;
+    }
+
+    activeList = null;
+    const paragraph = document.createElement("p");
+    paragraph.textContent = line;
+    container.append(paragraph);
+  }
+}
+
+function renderAnalysis(analysis, language) {
+  const sections = parseAnalysisSections(analysis, language);
+  analysisText.replaceChildren();
+  analysisText.classList.toggle("is-plain", sections.length === 0);
+
+  if (!sections.length) {
+    analysisText.textContent = analysis;
+    return;
+  }
+
+  sections.forEach((section, index) => {
+    const card = document.createElement("details");
+    card.className = "analysis-section";
+    card.open = true;
+    card.style.setProperty("--section-order", String(index));
+
+    const header = document.createElement("summary");
+    header.className = "analysis-section-header";
+
+    const number = document.createElement("span");
+    number.className = "analysis-section-number";
+    number.textContent = String(section.number).padStart(2, "0");
+
+    const title = document.createElement("span");
+    title.className = "analysis-section-title";
+    title.textContent = section.heading;
+
+    const chevron = document.createElement("span");
+    chevron.className = "analysis-section-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "⌄";
+
+    header.append(number, title, chevron);
+
+    const body = document.createElement("div");
+    body.className = "analysis-section-body";
+    appendAnalysisBody(body, section.body);
+
+    card.append(header, body);
+    analysisText.append(card);
+  });
+}
+
 function renderResult(payload) {
   currentPayload = payload;
   videoThumbnail.src = payload.video.thumbnailUrl;
   videoThumbnail.alt = text("videoAlt");
   videoLink.href = payload.video.canonicalUrl;
-  analysisText.textContent = payload.analysis;
+  renderAnalysis(payload.analysis, payload.language || currentLanguage);
 
   const metaParts = [
     text("characters", {
@@ -358,7 +434,7 @@ urlInput.addEventListener("input", clearError);
 
 copyButton.addEventListener("click", async () => {
   try {
-    await navigator.clipboard.writeText(analysisText.textContent);
+    await navigator.clipboard.writeText(currentPayload?.analysis || analysisText.textContent);
     copyButton.textContent = text("copied");
     setTimeout(() => {
       copyButton.textContent = text("copyButton");
