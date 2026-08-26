@@ -599,16 +599,162 @@ a {
 }
 
 .analysis-text {
-  padding: clamp(20px, 4vw, 36px);
+  display: grid;
+  gap: 14px;
   margin-top: 22px;
   color: #22344c;
+  overflow-wrap: anywhere;
+}
+
+.analysis-text.is-plain {
+  display: block;
+  padding: clamp(20px, 4vw, 36px);
   background: #fbfdff;
   border: 1px solid var(--line);
   border-radius: var(--radius-medium);
   font-size: 0.98rem;
   line-height: 1.75;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+}
+
+.analysis-section {
+  --section-color: #1769e0;
+  --section-soft: #edf5ff;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid #dbe6f2;
+  border-radius: 17px;
+  box-shadow: 0 8px 24px rgba(28, 55, 90, 0.06);
+  overflow: hidden;
+  opacity: 0;
+  animation: analysis-section-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--section-order) * 65ms);
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
+}
+
+.analysis-section:nth-child(4n + 2) {
+  --section-color: #7257c8;
+  --section-soft: #f3f0ff;
+}
+
+.analysis-section:nth-child(4n + 3) {
+  --section-color: #0b8b78;
+  --section-soft: #eaf9f5;
+}
+
+.analysis-section:nth-child(4n + 4) {
+  --section-color: #bd6a16;
+  --section-soft: #fff5e8;
+}
+
+.analysis-section:hover {
+  border-color: color-mix(in srgb, var(--section-color) 35%, #dbe6f2);
+  box-shadow: 0 15px 35px rgba(28, 55, 90, 0.11);
+  transform: translateY(-3px);
+}
+
+.analysis-section::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--section-color);
+  content: "";
+}
+
+.analysis-section-header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 26px;
+  gap: 14px;
+  align-items: center;
+  padding: 17px 20px 17px 22px;
+  background: linear-gradient(135deg, var(--section-soft), #fff 72%);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.analysis-section-header::-webkit-details-marker {
+  display: none;
+}
+
+.analysis-section-header::marker {
+  content: "";
+}
+
+.analysis-section-header:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--section-color) 32%, transparent);
+  outline-offset: -4px;
+}
+
+.analysis-section-number {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  color: #fff;
+  background: var(--section-color);
+  border-radius: 12px;
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--section-color) 28%, transparent);
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.analysis-section-title {
+  color: var(--ink);
+  font-size: clamp(0.92rem, 2vw, 1.04rem);
+  font-weight: 820;
+  letter-spacing: 0.025em;
+}
+
+.analysis-section-chevron {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  color: var(--section-color);
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--section-color) 18%, #dbe6f2);
+  border-radius: 50%;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 220ms ease;
+}
+
+.analysis-section[open] .analysis-section-chevron {
+  transform: rotate(180deg);
+}
+
+.analysis-section-body {
+  display: grid;
+  gap: 10px;
+  padding: 4px 24px 22px 78px;
+  font-size: 0.96rem;
+  line-height: 1.72;
+  animation: analysis-body-in 260ms ease-out both;
+}
+
+.analysis-section-body p,
+.analysis-section-body ul,
+.analysis-section-body ol {
+  margin: 0;
+}
+
+.analysis-section-body ul,
+.analysis-section-body ol {
+  display: grid;
+  gap: 7px;
+  padding-left: 1.25rem;
+}
+
+.analysis-section-body li::marker {
+  color: var(--section-color);
+  font-weight: 800;
 }
 
 .text-button {
@@ -698,6 +844,30 @@ a:focus-visible {
   }
 }
 
+@keyframes analysis-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes analysis-body-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 840px) {
   .hero {
     grid-template-columns: 1fr;
@@ -765,6 +935,23 @@ a:focus-visible {
 
   .video-summary {
     grid-template-columns: 1fr;
+  }
+
+  .analysis-section-header {
+    grid-template-columns: 38px minmax(0, 1fr) 24px;
+    gap: 11px;
+    padding: 15px 14px 15px 17px;
+  }
+
+  .analysis-section-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .analysis-section-body {
+    padding: 3px 17px 19px 17px;
+    font-size: 0.93rem;
   }
 
   .site-footer {
