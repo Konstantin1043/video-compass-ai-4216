@@ -31,7 +31,7 @@
         <span class="brand-mark" aria-hidden="true">VC</span>
         <span>VideoCompass <b>AI</b></span>
       </a>
-      <span class="course-label" data-i18n="tagline">Смысл видео — без лишнего</span>
+      <span class="course-label" data-i18n="tagline">Видео — по существу</span>
       <div
         class="language-switcher"
         role="group"
@@ -48,7 +48,7 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow" data-i18n="heroEyebrow">Смотрите осознанно</p>
-          <h1 id="hero-title" data-i18n="heroTitle">Поймите суть YouTube‑видео до просмотра</h1>
+          <h1 id="hero-title" data-i18n="heroTitle">Главное из видео</h1>
           <p class="hero-lead" data-i18n="heroLead">
             Вставьте ссылку — сервис получит доступные субтитры, выделит главное,
             оценит пользу ролика и предложит практические действия.
@@ -155,6 +155,37 @@
             </div>
           </div>
 
+          <div class="analysis-toolbar" id="analysisToolbar" hidden>
+            <p data-i18n="analysisHint">
+              Нажмите на заголовок, чтобы свернуть или раскрыть раздел.
+            </p>
+            <div
+              class="analysis-controls"
+              role="group"
+              aria-label="Управление разделами анализа"
+              data-i18n-aria-label="analysisControls"
+            >
+              <button
+                class="section-control"
+                id="collapseAllButton"
+                type="button"
+                aria-controls="analysisText"
+              >
+                <span aria-hidden="true">−</span>
+                <span data-i18n="collapseAll">Свернуть все</span>
+              </button>
+              <button
+                class="section-control"
+                id="expandAllButton"
+                type="button"
+                aria-controls="analysisText"
+              >
+                <span aria-hidden="true">+</span>
+                <span data-i18n="expandAll">Раскрыть все</span>
+              </button>
+            </div>
+          </div>
+
           <div class="analysis-text" id="analysisText"></div>
 
           <button class="text-button" id="newAnalysisButton" type="button" data-i18n="newAnalysis">
@@ -200,3 +231,4 @@
     </footer>
   </body>
 </html>
+
